@@ -13,10 +13,13 @@
 
   // ---------- Progreso (solo en este navegador) ----------
   const CLAVE = 'limites-progreso-v1';
-  let prog = { tipos: {}, ident: { ok: 0, n: 0 } };
+  let prog = { tipos: {}, ident: { ok: 0, n: 0 }, bases: {} };
   try { prog = { ...prog, ...JSON.parse(localStorage.getItem(CLAVE) || '{}') }; } catch { /* sin almacenamiento */ }
   const guardar = () => { try { localStorage.setItem(CLAVE, JSON.stringify(prog)); } catch { /* sin almacenamiento */ } };
   const anotar = (id, ok) => { const p = prog.tipos[id] || (prog.tipos[id] = { ok: 0, n: 0 }); p.n++; if (ok) p.ok++; guardar(); };
+  const B = window.BASES;
+  const dominada = id => (prog.bases?.[id] || 0) >= 5;
+  const NECESITAS = { sustitucion: ['signos', 'potencias', 'evaluar'], factorizacion: ['expresiones', 'factorcomun', 'difcuadrados', 'trinomio', 'simplificar'], racionalizacion: ['raices', 'simplificar'], laterales: ['evaluar'], infinitos: ['cero', 'signos'], alinfinito: ['cero', 'potencias'], raizinfinito: ['raices', 'cero'], trigonometricos: ['trig'], continuidad: ['evaluar'] };
   const pct = id => { const p = prog.tipos[id]; return p && p.n ? Math.round((100 * p.ok) / p.n) : 0; };
 
   // ---------- Vistas ----------
@@ -24,6 +27,7 @@
     return `<section class="entra">
       <h1>Límites</h1>
       <p class="bajada">${esc(L.examen)}. Aquí no se memoriza teoría: se aprende a <b>resolver</b>.</p>
+      <a class="panel banner-cero" href="#/bases"><i class="ph-bold ph-stairs"></i><span><b>¿Partes de cero? Empieza aquí</b><small>12 peldaños desde lo que ya sabes (sumar, fracciones) hasta factorizar. ${B.lecciones.filter(l => dominada(l.id)).length}/12 dominados.</small></span><i class="ph-bold ph-caret-right"></i></a>
       <div class="panel"><h3>El método (siempre igual)</h3><div class="metodo">${L.regla.map(([a, b], i) => `<div><b>${i + 1}</b><strong>${esc(a.replace(/^\d\.\s*/, ''))}</strong><span>${esc(b)}</span></div>`).join('')}</div></div>
       <div class="atajos">
         <a class="atajo" href="#/arbol" style="--c:#3B6CF6"><i class="ph-bold ph-tree-structure"></i><b>Árbol de decisión</b><span>¿Qué hago con este ejercicio?</span></a>
@@ -71,6 +75,7 @@
     return `<section class="entra" style="--c:${t.color}">
       <div class="cab-tipo"><span class="ico"><i class="ph-bold ${t.icono}"></i></span><div><h1>${esc(t.titulo)}</h1><span class="bajada">${esc(t.corto)}</span></div></div>
       <div class="cuando"><i class="ph-bold ph-signpost"></i> Cuándo: ${txt(t.cuando)}</div>
+      ${NECESITAS[t.id] ? `<div class="necesitas"><span>Necesitas antes:</span>${NECESITAS[t.id].map(id => { const l = B.lecciones.find(x => x.id === id); return `<a href="#/base/${id}" class="${dominada(id) ? 'hecha' : ''}">${dominada(id) ? '✓ ' : ''}${l.n}. ${esc(l.titulo)}</a>`; }).join('')}</div>` : ''}
       <div class="panel"><h3>Lo esencial</h3><ul class="lista">${t.esencial.map(x => `<li>${txt(x)}</li>`).join('')}</ul></div>
       <div class="panel"><h3>La receta</h3><ol class="receta">${t.receta.map(x => `<li>${txt(x)}</li>`).join('')}</ol></div>
       <div class="panel"><h3>Ejemplos resueltos (piensa antes de cada paso)</h3>${t.ejemplos.map(ejemplo).join('')}</div>
@@ -259,14 +264,78 @@
       ${L.tipos.filter(t => t.trampas.length).map(t => `<div class="panel" style="--c:${t.color}"><h3>${esc(t.titulo)}</h3>${t.trampas.map(x => `<div class="trampa"><i class="ph-fill ph-warning-circle"></i><span>${txt(x)}</span></div>`).join('')}</div>`).join('')}</section>`;
   }
 
+
+  // ---------- Desde 0 (bases) ----------
+  function bases() {
+    return `<section class="entra">
+      <h1>Desde 0</h1>
+      <p class="bajada">Una escalera desde lo que ya sabes hasta lo que piden los límites. Sube en orden: cada peldaño se domina con <b>5 aciertos seguidos</b>.</p>
+      <div class="tipos">${B.lecciones.map(l => `
+        <a class="tipo-fila" href="#/base/${l.id}" style="--c:${l.color}">
+          <span class="ico"><i class="ph-bold ${l.icono}"></i></span>
+          <span><b>${l.n}. ${esc(l.titulo)}</b><small>${esc(l.idea)}</small><div class="barra"><i style="width:${Math.min(100, (prog.bases?.[l.id] || 0) * 20)}%"></i></div></span>
+          <span class="pct">${dominada(l.id) ? '✓' : `${Math.min(5, prog.bases?.[l.id] || 0)}/5`}</span>
+        </a>`).join('')}</div>
+      <a class="btn primario ancho" href="#/arbol"><i class="ph-bold ph-arrow-right"></i>Ya las tengo: ir a los límites</a>
+    </section>`;
+  }
+  const base = { id: null, ej: null, racha: 0, respondido: false };
+  function vistaBase(id) {
+    const l = B.lecciones.find(x => x.id === id);
+    if (!l) return bases();
+    if (base.id !== id || !base.ej) { base.id = id; base.ej = l.gen(); base.racha = 0; base.respondido = false; }
+    const sig = B.lecciones.find(x => x.n === l.n + 1);
+    const ejemplo = (e, i) => `<div class="ejemplo" data-ej="${i}">
+      <div class="enunciado">${m(e.e)}</div>
+      ${e.pasos.map(([a, b]) => `<div class="paso">${a ? `<p>${txt(a)}</p>` : ''}${b ? m(b) : ''}</div>`).join('')}
+      <div class="respuesta">Resultado: ${m(e.r, false)}</div>
+      <button class="btn ancho" data-siguiente><i class="ph-bold ph-eye"></i>Ver el siguiente paso</button></div>`;
+    return `<section class="entra" style="--c:${l.color}">
+      <div class="cab-tipo"><span class="ico"><i class="ph-bold ${l.icono}"></i></span><div><h1>${l.n}. ${esc(l.titulo)}</h1><span class="bajada">${esc(l.idea)}</span></div></div>
+      <div class="panel"><h3>Explicación</h3><ul class="lista">${l.explica.map(x => `<li>${txt(x)}</li>`).join('')}</ul>
+        ${l.tabla ? `<div class="tabla-signos">${l.tabla.map(([a, b]) => `<span>${esc(a)} = <b>${esc(b)}</b></span>`).join('')}</div>` : ''}</div>
+      <div class="panel"><h3>Ejemplos (piensa antes de cada paso)</h3>${l.ejemplos.map(ejemplo).join('')}</div>
+      <div class="panel ejercicio" id="practica-base"><h3>Practica · ${Math.min(base.racha, 5)}/5 seguidos ${dominada(id) ? '· ✓ dominada' : ''}</h3>
+        <div class="enunciado">${m(base.ej.e)}</div>
+        ${base.ej.pide ? `<p class="bajada" style="margin:4px 0 0">Escribe ${esc(base.ej.pide)}</p>` : ''}
+        <div class="campo"><input id="resp-base" placeholder="Tu respuesta" autocomplete="off" inputmode="text"><button class="btn primario" id="comp-base">Comprobar</button></div>
+        <div class="teclas">${['-', '/', ',', '.'].map(k => `<button data-tecla="${k}">${k}</button>`).join('')}</div>
+        <div class="veredicto" id="v-base"></div>
+        <button class="btn primario ancho" id="otro-base" style="display:none"><i class="ph-bold ph-arrow-right"></i>Otro</button>
+      </div>
+      ${sig ? `<a class="btn ancho" href="#/base/${sig.id}"><i class="ph-bold ph-arrow-right"></i>Siguiente peldaño: ${esc(sig.titulo)}</a>` : '<a class="btn primario ancho" href="#/arbol"><i class="ph-bold ph-tree-structure"></i>Listo: ir al árbol de decisión de límites</a>'}
+    </section>`;
+  }
+  function enlazarBase() {
+    enlazarTipo();
+    const inp = $('#resp-base'), v = $('#v-base');
+    vista.querySelectorAll('#practica-base [data-tecla]').forEach(b => b.onclick = () => { inp.value += b.dataset.tecla; inp.focus(); });
+    const comp = () => {
+      if (base.respondido || !inp.value.trim()) return;
+      base.respondido = true;
+      const ok = B.correcto(inp.value, base.ej);
+      base.racha = ok ? base.racha + 1 : 0;
+      prog.bases = prog.bases || {};
+      prog.bases[base.id] = Math.max(prog.bases[base.id] || 0, base.racha); guardar();
+      v.className = `veredicto ${ok ? 'ok' : 'mal'}`;
+      v.innerHTML = (ok ? '¡Correcto! ' : `No. Era ${esc(base.ej.r.replace(',', ' y '))}. `) + `<br><span style="font-weight:600">${txt(base.ej.sol)}</span>` + (base.racha === 5 ? '<br>🎉 ¡Peldaño dominado!' : '');
+      $('#otro-base').style.display = '';
+    };
+    $('#comp-base').onclick = comp;
+    inp.onkeydown = e => { if (e.key === 'Enter') { base.respondido ? $('#otro-base').click() : comp(); } };
+    $('#otro-base').onclick = () => { const l = B.lecciones.find(x => x.id === base.id); base.ej = l.gen(); base.respondido = false; pintar(); document.getElementById('practica-base').scrollIntoView({ block: 'center' }); };
+  }
+
   // ---------- Router ----------
   function pintar() {
     const [ruta, arg] = location.hash.replace(/^#\/?/, '').split('/');
-    document.querySelectorAll('.pestanas a').forEach(a => a.classList.toggle('activa', a.dataset.ruta === (ruta || 'inicio')));
+    document.querySelectorAll('.pestanas a').forEach(a => a.classList.toggle('activa', a.dataset.ruta === ({ base: 'bases', tipo: 'arbol' }[ruta] || ruta || 'inicio')));
     if (ruta !== 'simulacro') clearInterval(sim.timer);
     let html, enlazar;
     switch (ruta) {
       case 'arbol': html = arbol(); break;
+      case 'bases': html = bases(); break;
+      case 'base': html = vistaBase(arg); enlazar = enlazarBase; break;
       case 'tipo': html = vistaTipo(arg); enlazar = enlazarTipo; break;
       case 'entrenar': if ((arg || null) !== ent.filtro) { ent.filtro = arg || null; ent.actual = null; } html = entrenar(); enlazar = enlazarEntrenar; break;
       case 'identificar': html = identificar(); enlazar = enlazarIdentificar; break;
