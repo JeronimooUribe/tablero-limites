@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Límites · Técnica Navegación</title>
+  <meta name="description" content="Tablero para aprender a resolver límites: árbol de decisión, recetas, ejemplos paso a paso, ejercicios infinitos con corrección y simulacro.">
+  <meta name="theme-color" content="#0B1020">
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
+  <link rel="stylesheet" href="vendor/ph/bold.css">
+  <link rel="stylesheet" href="vendor/ph/fill.css">
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <header class="cab">
+    <a href="#/" class="marca"><span class="lim-ico">lim</span><span>Límites</span></a>
+    <nav class="pestanas" aria-label="Secciones">
+      <a href="#/" data-ruta="inicio"><i class="ph-bold ph-house"></i><span>Inicio</span></a>
+      <a href="#/arbol" data-ruta="arbol"><i class="ph-bold ph-tree-structure"></i><span>Árbol</span></a>
+      <a href="#/entrenar" data-ruta="entrenar"><i class="ph-bold ph-barbell"></i><span>Entrenar</span></a>
+      <a href="#/identificar" data-ruta="identificar"><i class="ph-bold ph-target"></i><span>¿Qué tipo?</span></a>
+      <a href="#/simulacro" data-ruta="simulacro"><i class="ph-bold ph-timer"></i><span>Simulacro</span></a>
+    </nav>
+  </header>
+  <main id="vista" class="vista"></main>
+  <script src="vendor/katex/katex.min.js"></script>
+  <script src="datos.js"></script>
+  <script src="generadores.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
